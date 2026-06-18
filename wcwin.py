@@ -148,14 +148,71 @@ FIFA_RANK: dict[str, int] = {
     "New Zealand": 95,
 }
 
-CALIBRATED_RANK_LOG_SCALE = 0.55
-CALIBRATED_HOST_ADVANTAGE = 0.42
-CALIBRATED_BASE_GOALS = 2.80
-CALIBRATED_TOTAL_GOALS_SLOPE = 0.22
+CONFEDERATION: dict[str, str] = {
+    "Algeria": "CAF",
+    "Argentina": "CONMEBOL",
+    "Australia": "AFC",
+    "Austria": "UEFA",
+    "Belgium": "UEFA",
+    "Bosnia & Herzegovina": "UEFA",
+    "Brazil": "CONMEBOL",
+    "Canada": "CONCACAF",
+    "Cape Verde": "CAF",
+    "Colombia": "CONMEBOL",
+    "Croatia": "UEFA",
+    "Curaçao": "CONCACAF",
+    "Czechia": "UEFA",
+    "DR Congo": "CAF",
+    "Ecuador": "CONMEBOL",
+    "Egypt": "CAF",
+    "England": "UEFA",
+    "France": "UEFA",
+    "Germany": "UEFA",
+    "Ghana": "CAF",
+    "Haiti": "CONCACAF",
+    "Iran": "AFC",
+    "Iraq": "AFC",
+    "Ivory Coast": "CAF",
+    "Japan": "AFC",
+    "Jordan": "AFC",
+    "Mexico": "CONCACAF",
+    "Morocco": "CAF",
+    "Netherlands": "UEFA",
+    "New Zealand": "OFC",
+    "Norway": "UEFA",
+    "Panama": "CONCACAF",
+    "Paraguay": "CONMEBOL",
+    "Portugal": "UEFA",
+    "Qatar": "AFC",
+    "Saudi Arabia": "AFC",
+    "Scotland": "UEFA",
+    "Senegal": "CAF",
+    "South Africa": "CAF",
+    "South Korea": "AFC",
+    "Spain": "UEFA",
+    "Sweden": "UEFA",
+    "Switzerland": "UEFA",
+    "Tunisia": "CAF",
+    "Türkiye": "UEFA",
+    "USA": "CONCACAF",
+    "Uruguay": "CONMEBOL",
+    "Uzbekistan": "AFC",
+}
+
+CALIBRATED_RANK_LOG_SCALE = 0.36
+CALIBRATED_HOST_ADVANTAGE = 0.385
+CALIBRATED_BASE_GOALS = 3.02
+CALIBRATED_TOTAL_GOALS_SLOPE = 0.06
+CALIBRATED_DRAW_ADJUSTMENT = 0.994
+CALIBRATED_KNOCKOUT_DRAW_MULTIPLIER = 1.147
+CALIBRATED_FORM_WEIGHT = 0.547
+CALIBRATED_PRIOR_WC_WEIGHT = -0.036
+CALIBRATED_CONFEDERATION_WEIGHT = 0.272
 CALIBRATED_MARKET_WEIGHT = 0.65
 
 HISTORICAL_MATCHES_URL = "https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-csv/matches.csv"
 HISTORICAL_RANKINGS_URL = "https://raw.githubusercontent.com/tadhgfitzgerald/fifa_ranking/master/fifa_ranking.csv"
+HISTORICAL_TEAMS_URL = "https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-csv/teams.csv"
 BACKTEST_TOURNAMENTS = ("WC-1994", "WC-1998", "WC-2002", "WC-2006", "WC-2010", "WC-2014", "WC-2018")
 BACKTEST_HOSTS = {
     "WC-1994": {"USA"},
@@ -424,12 +481,28 @@ def fit_strengths(iterations: int = 900) -> dict[str, float]:
     return {team: value - mean for team, value in ratings.items()}
 
 
+def confederation_adjustment(confed_a: str | None, confed_b: str | None) -> float:
+    if confed_a == confed_b:
+        return 0.0
+    adjustment = 0.0
+    if confed_a == "CONMEBOL" and confed_b != "CONMEBOL":
+        adjustment += CALIBRATED_CONFEDERATION_WEIGHT
+    elif confed_b == "CONMEBOL" and confed_a != "CONMEBOL":
+        adjustment -= CALIBRATED_CONFEDERATION_WEIGHT
+    if confed_a == "UEFA" and confed_b not in {"UEFA", "CONMEBOL"}:
+        adjustment += CALIBRATED_CONFEDERATION_WEIGHT * 0.5
+    elif confed_b == "UEFA" and confed_a not in {"UEFA", "CONMEBOL"}:
+        adjustment -= CALIBRATED_CONFEDERATION_WEIGHT * 0.5
+    return adjustment
+
+
 def expected_goals(team_a: str, team_b: str, ratings: dict[str, float]) -> tuple[float, float]:
     diff = max(-3.0, min(3.0, ratings[team_a] - ratings[team_b]))
     if team_a in HOSTS and team_b not in HOSTS:
         diff += CALIBRATED_HOST_ADVANTAGE
     elif team_b in HOSTS and team_a not in HOSTS:
         diff -= CALIBRATED_HOST_ADVANTAGE
+    diff += confederation_adjustment(CONFEDERATION.get(team_a), CONFEDERATION.get(team_b))
     total = CALIBRATED_BASE_GOALS + CALIBRATED_TOTAL_GOALS_SLOPE * min(abs(diff), 2.5)
     goals_a = max(0.18, total / 2.0 + diff / 2.0)
     goals_b = max(0.18, total / 2.0 - diff / 2.0)
@@ -451,13 +524,18 @@ def score_distribution(team_a: str, team_b: str, ratings: dict[str, float], max_
     return [(ga, gb, pa * pb) for ga, pa in enumerate(p_a) for gb, pb in enumerate(p_b)]
 
 
-def poisson_outcome_probabilities(team_a: str, team_b: str, ratings: dict[str, float]) -> tuple[float, float, float]:
+def poisson_outcome_probabilities(
+    team_a: str,
+    team_b: str,
+    ratings: dict[str, float],
+    draw_adjustment: float = CALIBRATED_DRAW_ADJUSTMENT,
+) -> tuple[float, float, float]:
     win = draw = loss = 0.0
     for ga, gb, probability in score_distribution(team_a, team_b, ratings):
         if ga > gb:
             win += probability
         elif ga == gb:
-            draw += probability
+            draw += probability * draw_adjustment
         else:
             loss += probability
     total = win + draw + loss
@@ -754,12 +832,69 @@ def historical_rankings_by_tournament(rank_rows: list[dict[str, str]], match_row
         rankings[tournament] = {code: int(latest[code]["rank"]) for code in team_codes[tournament]}
     return rankings
 
+def historical_confederations(team_rows: list[dict[str, str]]) -> dict[str, str]:
+    return {historical_code(row["team_code"]): row["confederation_code"] for row in team_rows}
+
+
+def historical_prior_wc_scores(all_match_rows: list[dict[str, str]], backtest_rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
+    scores: dict[str, dict[str, float]] = {}
+    for tournament in BACKTEST_TOURNAMENTS:
+        year = int(tournament.split("-")[1])
+        teams = {
+            historical_code(row["home_team_code"]) for row in backtest_rows if row["tournament_id"] == tournament
+        } | {
+            historical_code(row["away_team_code"]) for row in backtest_rows if row["tournament_id"] == tournament
+        }
+        raw = {team: 0.0 for team in teams}
+        counts = {team: 0 for team in teams}
+        for row in all_match_rows:
+            row_year = int(row["tournament_id"].split("-")[1])
+            if row_year >= year:
+                continue
+            weight = 0.65 ** ((year - row_year) // 4 - 1)
+            home = historical_code(row["home_team_code"])
+            away = historical_code(row["away_team_code"])
+            goal_diff = int(row["home_team_score"]) - int(row["away_team_score"])
+            if home in raw:
+                points = 3 if goal_diff > 0 else 1 if goal_diff == 0 else 0
+                raw[home] += weight * (points / 3.0 + 0.15 * max(-3, min(3, goal_diff)))
+                counts[home] += 1
+            if away in raw:
+                points = 3 if goal_diff < 0 else 1 if goal_diff == 0 else 0
+                raw[away] += weight * (points / 3.0 + 0.15 * max(-3, min(3, -goal_diff)))
+                counts[away] += 1
+        scores[tournament] = {team: raw[team] / max(1, counts[team]) for team in teams}
+    return scores
+
+
+def historical_form_delta(form: dict[str, float], played: dict[str, int], home: str, away: str) -> float:
+    return form[home] / max(1, played[home]) - form[away] / max(1, played[away])
+
+
+def update_historical_form(form: dict[str, float], played: dict[str, int], home: str, away: str, goal_diff: int) -> None:
+    home_points = 3 if goal_diff > 0 else 1 if goal_diff == 0 else 0
+    away_points = 3 if goal_diff < 0 else 1 if goal_diff == 0 else 0
+    form[home] += home_points / 3.0 + 0.12 * max(-3, min(3, goal_diff))
+    form[away] += away_points / 3.0 + 0.12 * max(-3, min(3, -goal_diff))
+    played[home] += 1
+    played[away] += 1
+
+
 
 def historical_rating(rank: int) -> float:
     return -CALIBRATED_RANK_LOG_SCALE * math.log(rank)
 
 
-def historical_probabilities(home_code: str, away_code: str, tournament: str, ranks: dict[str, int]) -> tuple[float, float, float]:
+def historical_probabilities(
+    home_code: str,
+    away_code: str,
+    tournament: str,
+    ranks: dict[str, int],
+    form_delta: float = 0.0,
+    prior_delta: float = 0.0,
+    confederations: dict[str, str] | None = None,
+    knockout_stage: bool = False,
+) -> tuple[float, float, float]:
     home = historical_code(home_code)
     away = historical_code(away_code)
     diff = historical_rating(ranks[home]) - historical_rating(ranks[away])
@@ -768,40 +903,56 @@ def historical_probabilities(home_code: str, away_code: str, tournament: str, ra
         diff += CALIBRATED_HOST_ADVANTAGE
     elif away in hosts and home not in hosts:
         diff -= CALIBRATED_HOST_ADVANTAGE
+    diff += CALIBRATED_FORM_WEIGHT * form_delta
+    diff += CALIBRATED_PRIOR_WC_WEIGHT * prior_delta
+    if confederations is not None:
+        diff += confederation_adjustment(confederations.get(home), confederations.get(away))
     total = CALIBRATED_BASE_GOALS + CALIBRATED_TOTAL_GOALS_SLOPE * min(abs(diff), 2.5)
     mu_home = max(0.18, total / 2.0 + diff / 2.0)
     mu_away = max(0.18, total / 2.0 - diff / 2.0)
     home_pmf = poisson_pmf(mu_home)
     away_pmf = poisson_pmf(mu_away)
     win = draw = loss = 0.0
+    draw_adjustment = CALIBRATED_DRAW_ADJUSTMENT * (CALIBRATED_KNOCKOUT_DRAW_MULTIPLIER if knockout_stage else 1.0)
     for home_goals, home_prob in enumerate(home_pmf):
         for away_goals, away_prob in enumerate(away_pmf):
             probability = home_prob * away_prob
             if home_goals > away_goals:
                 win += probability
             elif home_goals == away_goals:
-                draw += probability
+                draw += probability * draw_adjustment
             else:
                 loss += probability
     total_probability = win + draw + loss
     return win / total_probability, draw / total_probability, loss / total_probability
 
-def historical_advance_pick(home_code: str, away_code: str, tournament: str, ranks: dict[str, int]) -> str:
+def historical_advance_pick(
+    home_code: str,
+    away_code: str,
+    tournament: str,
+    ranks: dict[str, int],
+    form_delta: float = 0.0,
+    prior_delta: float = 0.0,
+    confederations: dict[str, str] | None = None,
+) -> str:
     home = historical_code(home_code)
     away = historical_code(away_code)
-    win, draw, _ = historical_probabilities(home_code, away_code, tournament, ranks)
+    win, draw, _ = historical_probabilities(home_code, away_code, tournament, ranks, form_delta, prior_delta, confederations, True)
     shootout = 1.0 / (1.0 + math.exp(-(historical_rating(ranks[home]) - historical_rating(ranks[away]))))
     return home if win + draw * shootout >= 0.5 else away
 
 
 
 def run_historical_backtest() -> dict[str, object]:
+    all_match_rows = load_csv_url(HISTORICAL_MATCHES_URL)
     match_rows = [
         row
-        for row in load_csv_url(HISTORICAL_MATCHES_URL)
+        for row in all_match_rows
         if row["tournament_id"] in BACKTEST_TOURNAMENTS
     ]
     rank_rows = load_csv_url(HISTORICAL_RANKINGS_URL)
+    confederations = historical_confederations(load_csv_url(HISTORICAL_TEAMS_URL))
+    prior_wc_scores = historical_prior_wc_scores(all_match_rows, match_rows)
     rankings = historical_rankings_by_tournament(rank_rows, match_rows)
     by_tournament: dict[str, dict[str, float | int | str]] = {}
     totals = {"matches": 0, "correct": 0, "log_loss": 0.0, "brier": 0.0, "group_matches": 0, "group_correct": 0}
@@ -820,12 +971,37 @@ def run_historical_backtest() -> dict[str, object]:
         top_ranked_champion_code = min(entrant_codes, key=lambda code: ranks[code])
         final = max(rows, key=lambda row: row["match_date"])
         actual_champion_code = historical_code(final["home_team_code"] if final["home_team_win"] == "1" else final["away_team_code"])
-        final_match_pick_code = historical_advance_pick(final["home_team_code"], final["away_team_code"], tournament, ranks)
         top_ranked_champion_hits += top_ranked_champion_code == actual_champion_code
-        final_match_champion_hits += final_match_pick_code == actual_champion_code
+        form = {code: 0.0 for code in entrant_codes}
+        played = {code: 0 for code in entrant_codes}
+        final_match_pick_code = ""
 
         for row in rows:
-            probabilities = historical_probabilities(row["home_team_code"], row["away_team_code"], tournament, ranks)
+            home_code = historical_code(row["home_team_code"])
+            away_code = historical_code(row["away_team_code"])
+            form_delta = historical_form_delta(form, played, home_code, away_code)
+            prior_delta = prior_wc_scores[tournament][home_code] - prior_wc_scores[tournament][away_code]
+            probabilities = historical_probabilities(
+                row["home_team_code"],
+                row["away_team_code"],
+                tournament,
+                ranks,
+                form_delta,
+                prior_delta,
+                confederations,
+                row["knockout_stage"] == "1",
+            )
+            if row is final:
+                final_match_pick_code = historical_advance_pick(
+                    row["home_team_code"],
+                    row["away_team_code"],
+                    tournament,
+                    ranks,
+                    form_delta,
+                    prior_delta,
+                    confederations,
+                )
+                final_match_champion_hits += final_match_pick_code == actual_champion_code
             if int(row["home_team_score"]) > int(row["away_team_score"]):
                 actual = 0
             elif int(row["home_team_score"]) == int(row["away_team_score"]):
@@ -842,6 +1018,7 @@ def run_historical_backtest() -> dict[str, object]:
             if row["group_stage"] == "1":
                 tournament_totals["group_matches"] += 1
                 tournament_totals["group_correct"] += int(predicted == actual)
+            update_historical_form(form, played, home_code, away_code, int(row["home_team_score"]) - int(row["away_team_score"]))
 
         for key in totals:
             totals[key] += tournament_totals[key]
@@ -902,6 +1079,11 @@ def calibration_summary() -> dict[str, float]:
         "host_advantage_goals": CALIBRATED_HOST_ADVANTAGE,
         "base_goals": CALIBRATED_BASE_GOALS,
         "total_goals_slope": CALIBRATED_TOTAL_GOALS_SLOPE,
+        "draw_adjustment": CALIBRATED_DRAW_ADJUSTMENT,
+        "knockout_draw_multiplier": CALIBRATED_KNOCKOUT_DRAW_MULTIPLIER,
+        "in_tournament_form_weight": CALIBRATED_FORM_WEIGHT,
+        "prior_world_cup_weight": CALIBRATED_PRIOR_WC_WEIGHT,
+        "confederation_weight": CALIBRATED_CONFEDERATION_WEIGHT,
         "market_weight_for_unplayed_2026_group_matches": CALIBRATED_MARKET_WEIGHT,
     }
 
