@@ -1,69 +1,69 @@
 match_no,stage,group,team_a,team_b,score,winner,note
 1,Group,A,Mexico,South Africa,2-0,Mexico,observed
 2,Group,A,South Korea,Czechia,2-1,South Korea,observed
-3,Group,A,Mexico,Czechia,1-0,Mexico,predicted
-4,Group,A,South Africa,South Korea,0-1,South Korea,predicted
-5,Group,A,South Korea,Mexico,0-1,Mexico,predicted
-6,Group,A,Czechia,South Africa,1-0,Czechia,predicted
+3,Group,A,Mexico,Czechia,2-0,Mexico,predicted
+4,Group,A,South Africa,South Korea,0-2,South Korea,predicted
+5,Group,A,South Korea,Mexico,0-2,Mexico,predicted
+6,Group,A,Czechia,South Africa,2-1,Czechia,predicted
 7,Group,B,Canada,Bosnia & Herzegovina,1-1,Draw,observed
 8,Group,B,Switzerland,Qatar,1-1,Draw,observed
 9,Group,B,Switzerland,Canada,1-0,Switzerland,predicted
-10,Group,B,Bosnia & Herzegovina,Qatar,1-0,Bosnia & Herzegovina,predicted
+10,Group,B,Bosnia & Herzegovina,Qatar,2-1,Bosnia & Herzegovina,predicted
 11,Group,B,Canada,Qatar,2-0,Canada,predicted
-12,Group,B,Switzerland,Bosnia & Herzegovina,1-0,Switzerland,predicted
+12,Group,B,Switzerland,Bosnia & Herzegovina,2-1,Switzerland,predicted
 13,Group,C,Brazil,Morocco,1-1,Draw,observed
 14,Group,C,Scotland,Haiti,1-0,Scotland,observed
 15,Group,C,Brazil,Scotland,2-0,Brazil,predicted
 16,Group,C,Morocco,Haiti,2-0,Morocco,predicted
-17,Group,C,Brazil,Haiti,2-0,Brazil,predicted
+17,Group,C,Brazil,Haiti,3-0,Brazil,predicted
 18,Group,C,Morocco,Scotland,2-0,Morocco,predicted
 19,Group,D,USA,Paraguay,4-1,USA,observed
 20,Group,D,Türkiye,Australia,0-2,Australia,observed
-21,Group,D,USA,Türkiye,1-0,USA,predicted
+21,Group,D,USA,Türkiye,2-1,USA,predicted
 22,Group,D,Paraguay,Australia,1-0,Paraguay,predicted
-23,Group,D,USA,Australia,1-0,USA,predicted
-24,Group,D,Türkiye,Paraguay,1-0,Türkiye,predicted
+23,Group,D,USA,Australia,2-0,USA,predicted
+24,Group,D,Türkiye,Paraguay,2-1,Türkiye,predicted
 25,Group,E,Germany,Curaçao,7-1,Germany,observed
 26,Group,E,Ivory Coast,Ecuador,1-0,Ivory Coast,observed
-27,Group,E,Germany,Ivory Coast,1-0,Germany,predicted
+27,Group,E,Germany,Ivory Coast,2-1,Germany,predicted
 28,Group,E,Ecuador,Curaçao,2-0,Ecuador,predicted
-29,Group,E,Germany,Ecuador,1-0,Germany,predicted
+29,Group,E,Germany,Ecuador,2-1,Germany,predicted
 30,Group,E,Curaçao,Ivory Coast,0-2,Ivory Coast,predicted
 31,Group,F,Netherlands,Japan,2-2,Draw,observed
 32,Group,F,Sweden,Tunisia,5-1,Sweden,observed
-33,Group,F,Netherlands,Sweden,1-0,Netherlands,predicted
+33,Group,F,Netherlands,Sweden,2-0,Netherlands,predicted
 34,Group,F,Japan,Tunisia,2-0,Japan,predicted
 35,Group,F,Netherlands,Tunisia,2-0,Netherlands,predicted
-36,Group,F,Japan,Sweden,1-0,Japan,predicted
+36,Group,F,Japan,Sweden,2-1,Japan,predicted
 37,Group,G,Belgium,Egypt,1-1,Draw,observed
 38,Group,G,Iran,New Zealand,2-2,Draw,observed
 39,Group,G,Belgium,Iran,2-0,Belgium,predicted
 40,Group,G,Egypt,New Zealand,2-0,Egypt,predicted
 41,Group,G,Belgium,New Zealand,2-0,Belgium,predicted
-42,Group,G,Egypt,Iran,1-0,Egypt,predicted
+42,Group,G,Egypt,Iran,2-0,Egypt,predicted
 43,Group,H,Spain,Uruguay,0-0,Draw,observed
 44,Group,H,Saudi Arabia,Cape Verde,1-1,Draw,observed
-45,Group,H,Spain,Saudi Arabia,2-0,Spain,predicted
+45,Group,H,Spain,Saudi Arabia,3-0,Spain,predicted
 46,Group,H,Uruguay,Cape Verde,2-0,Uruguay,predicted
-47,Group,H,Spain,Cape Verde,2-0,Spain,predicted
+47,Group,H,Spain,Cape Verde,3-0,Spain,predicted
 48,Group,H,Uruguay,Saudi Arabia,2-0,Uruguay,predicted
 49,Group,I,France,Norway,3-1,France,observed
 50,Group,I,Senegal,Iraq,3-1,Senegal,observed
 51,Group,I,France,Senegal,2-0,France,predicted
 52,Group,I,Norway,Iraq,2-0,Norway,predicted
-53,Group,I,France,Iraq,2-0,France,predicted
-54,Group,I,Norway,Senegal,1-0,Norway,predicted
+53,Group,I,France,Iraq,3-0,France,predicted
+54,Group,I,Norway,Senegal,2-1,Norway,predicted
 55,Group,J,Argentina,Austria,3-0,Argentina,observed
 56,Group,J,Algeria,Jordan,1-3,Jordan,observed
 57,Group,J,Argentina,Algeria,2-0,Argentina,predicted
 58,Group,J,Austria,Jordan,2-0,Austria,predicted
-59,Group,J,Argentina,Jordan,2-0,Argentina,predicted
-60,Group,J,Algeria,Austria,0-1,Austria,predicted
+59,Group,J,Argentina,Jordan,3-0,Argentina,predicted
+60,Group,J,Algeria,Austria,1-2,Austria,predicted
 61,Group,K,Portugal,Colombia,1-1,Draw,observed
 62,Group,K,DR Congo,Uzbekistan,1-3,Uzbekistan,observed
 63,Group,K,Portugal,DR Congo,2-0,Portugal,predicted
 64,Group,K,Colombia,Uzbekistan,2-0,Colombia,predicted
-65,Group,K,Portugal,Uzbekistan,2-0,Portugal,predicted
+65,Group,K,Portugal,Uzbekistan,3-0,Portugal,predicted
 66,Group,K,DR Congo,Colombia,0-2,Colombia,predicted
 67,Group,L,England,Croatia,4-2,England,observed
 68,Group,L,Ghana,Panama,1-0,Ghana,observed
@@ -71,35 +71,35 @@ match_no,stage,group,team_a,team_b,score,winner,note
 70,Group,L,Croatia,Panama,2-0,Croatia,predicted
 71,Group,L,England,Panama,2-0,England,predicted
 72,Group,L,Croatia,Ghana,2-0,Croatia,predicted
-73,Round of 32,2A vs 2B,South Korea,Canada,0-1,Canada,predicted
-74,Round of 32,1C vs 2F,Brazil,Japan,1-0,Brazil,predicted
-75,Round of 32,1E vs 3ABCDF,Germany,Sweden,1-0,Germany,predicted
-76,Round of 32,1F vs 2C,Netherlands,Morocco,1-0,Netherlands,predicted
-77,Round of 32,2E vs 2I,Ivory Coast,Norway,0-1,Norway,predicted
+73,Round of 32,2A vs 2B,South Korea,Canada,1-2,Canada,predicted
+74,Round of 32,1C vs 2F,Brazil,Japan,2-1,Brazil,predicted
+75,Round of 32,1E vs 3ABCDF,Germany,Sweden,2-0,Germany,predicted
+76,Round of 32,1F vs 2C,Netherlands,Morocco,2-1,Netherlands,predicted
+77,Round of 32,2E vs 2I,Ivory Coast,Norway,1-2,Norway,predicted
 78,Round of 32,1I vs 3CDFGH,France,Türkiye,2-0,France,predicted
-79,Round of 32,1A vs 3CEFHI,Mexico,Senegal,0-1,Senegal,predicted
-80,Round of 32,1L vs 3EHIJK,England,Uzbekistan,2-0,England,predicted
+79,Round of 32,1A vs 3CEFHI,Mexico,Senegal,2-1,Mexico,predicted
+80,Round of 32,1L vs 3EHIJK,England,Uzbekistan,3-0,England,predicted
 81,Round of 32,1G vs 3AEHIJ,Belgium,Czechia,2-0,Belgium,predicted
 82,Round of 32,1D vs 3BEFIJ,USA,Bosnia & Herzegovina,2-0,USA,predicted
-83,Round of 32,1H vs 2J,Spain,Austria,1-0,Spain,predicted
+83,Round of 32,1H vs 2J,Spain,Austria,2-0,Spain,predicted
 84,Round of 32,2K vs 2L,Colombia,Croatia,1-0,Colombia,predicted
-85,Round of 32,1B vs 3EFGIJ,Switzerland,Ecuador,0-1,Ecuador,predicted
+85,Round of 32,1B vs 3EFGIJ,Switzerland,Ecuador,1-0,Switzerland,predicted
 86,Round of 32,2D vs 2G,Australia,Egypt,1-0,Australia,predicted
-87,Round of 32,1J vs 2H,Argentina,Uruguay,1-0,Argentina,predicted
+87,Round of 32,1J vs 2H,Argentina,Uruguay,2-1,Argentina,predicted
 88,Round of 32,1K vs 3DEIJL,Portugal,Jordan,2-0,Portugal,predicted
-89,Round of 16,,Canada,Germany,0-1,Germany,predicted
-90,Round of 16,,Brazil,Norway,1-0,Brazil,predicted
-91,Round of 16,,Netherlands,France,0-1,France,predicted
-92,Round of 16,,Senegal,England,0-2,England,predicted
-93,Round of 16,,Spain,Colombia,1-0,Spain,predicted
-94,Round of 16,,Belgium,USA,0-1,USA,predicted
+89,Round of 16,,Canada,Germany,1-2,Germany,predicted
+90,Round of 16,,Brazil,Norway,2-1,Brazil,predicted
+91,Round of 16,,Netherlands,France,1-2,France,predicted
+92,Round of 16,,Mexico,England,0-2,England,predicted
+93,Round of 16,,Spain,Colombia,2-1,Spain,predicted
+94,Round of 16,,Belgium,USA,1-2,USA,predicted
 95,Round of 16,,Australia,Portugal,0-2,Portugal,predicted
-96,Round of 16,,Ecuador,Argentina,0-2,Argentina,predicted
-97,Quarterfinal,,Germany,Brazil,0-1,Brazil,predicted
-98,Quarterfinal,,Spain,USA,1-0,Spain,predicted
-99,Quarterfinal,,France,England,1-0,France,predicted
-100,Quarterfinal,,Portugal,Argentina,0-1,Argentina,predicted
-101,Semifinal,,Brazil,Spain,0-1,Spain,predicted
-102,Semifinal,,France,Argentina,1-0,France,predicted
-103,Third place,,Brazil,Argentina,0-1,Argentina,predicted
-104,Final,,Spain,France,0-1,France,predicted
+96,Round of 16,,Switzerland,Argentina,0-2,Argentina,predicted
+97,Quarterfinal,,Germany,Brazil,1-2,Brazil,predicted
+98,Quarterfinal,,Spain,USA,2-1,Spain,predicted
+99,Quarterfinal,,France,England,2-1,France,predicted
+100,Quarterfinal,,Portugal,Argentina,1-2,Argentina,predicted
+101,Semifinal,,Brazil,Spain,1-2,Spain,predicted
+102,Semifinal,,France,Argentina,2-1,France,predicted
+103,Third place,,Brazil,Argentina,1-2,Argentina,predicted
+104,Final,,Spain,France,1-2,France,predicted

@@ -1,0 +1,115 @@
+{
+  "source_matches": "https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-csv/matches.csv",
+  "source_rankings": "https://raw.githubusercontent.com/tadhgfitzgerald/fifa_ranking/master/fifa_ranking.csv",
+  "tournaments": [
+    "WC-1994",
+    "WC-1998",
+    "WC-2002",
+    "WC-2006",
+    "WC-2010",
+    "WC-2014",
+    "WC-2018"
+  ],
+  "calibration": {
+    "rank_log_scale": 0.55,
+    "host_advantage_goals": 0.42,
+    "base_goals": 2.8,
+    "total_goals_slope": 0.22,
+    "market_weight_for_unplayed_2026_group_matches": 0.65
+  },
+  "overall": {
+    "matches": 436,
+    "accuracy": 0.5412844036697247,
+    "group_stage_accuracy": 0.5432098765432098,
+    "log_loss": 0.9993909951553653,
+    "brier": 0.59252627831395,
+    "top_ranked_champion_hit_rate": 0.0,
+    "final_match_champion_hit_rate": 0.7142857142857143
+  },
+  "by_tournament": {
+    "WC-1994": {
+      "matches": 52,
+      "accuracy": 0.5961538461538461,
+      "group_stage_accuracy": 0.5555555555555556,
+      "log_loss": 0.9594797343421602,
+      "brier": 0.5628291968873607,
+      "top_ranked_champion_code": "GER",
+      "final_match_pick_code": "BRA",
+      "actual_champion_code": "BRA",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 1
+    },
+    "WC-1998": {
+      "matches": 64,
+      "accuracy": 0.484375,
+      "group_stage_accuracy": 0.4791666666666667,
+      "log_loss": 1.062371178128656,
+      "brier": 0.6399454588390758,
+      "top_ranked_champion_code": "BRA",
+      "final_match_pick_code": "BRA",
+      "actual_champion_code": "FRA",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 0
+    },
+    "WC-2002": {
+      "matches": 64,
+      "accuracy": 0.53125,
+      "group_stage_accuracy": 0.5208333333333334,
+      "log_loss": 1.0394335657695073,
+      "brier": 0.6165917050289752,
+      "top_ranked_champion_code": "FRA",
+      "final_match_pick_code": "BRA",
+      "actual_champion_code": "BRA",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 1
+    },
+    "WC-2006": {
+      "matches": 64,
+      "accuracy": 0.484375,
+      "group_stage_accuracy": 0.5416666666666666,
+      "log_loss": 0.9858772999550856,
+      "brier": 0.58239611467478,
+      "top_ranked_champion_code": "BRA",
+      "final_match_pick_code": "FRA",
+      "actual_champion_code": "ITA",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 0
+    },
+    "WC-2010": {
+      "matches": 64,
+      "accuracy": 0.546875,
+      "group_stage_accuracy": 0.4791666666666667,
+      "log_loss": 0.9857096335447895,
+      "brier": 0.5871633631934163,
+      "top_ranked_champion_code": "BRA",
+      "final_match_pick_code": "ESP",
+      "actual_champion_code": "ESP",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 1
+    },
+    "WC-2014": {
+      "matches": 64,
+      "accuracy": 0.625,
+      "group_stage_accuracy": 0.6458333333333334,
+      "log_loss": 0.958492903601975,
+      "brier": 0.5657940578093856,
+      "top_ranked_champion_code": "ESP",
+      "final_match_pick_code": "GER",
+      "actual_champion_code": "GER",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 1
+    },
+    "WC-2018": {
+      "matches": 64,
+      "accuracy": 0.53125,
+      "group_stage_accuracy": 0.5833333333333334,
+      "log_loss": 0.9968892893429072,
+      "brier": 0.5873958489971702,
+      "top_ranked_champion_code": "GER",
+      "final_match_pick_code": "FRA",
+      "actual_champion_code": "FRA",
+      "top_ranked_champion_hit": 0,
+      "final_match_champion_hit": 1
+    }
+  }
+}

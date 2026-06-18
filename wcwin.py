@@ -22,6 +22,7 @@ import csv
 import json
 import math
 import random
+import urllib.request
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -145,6 +146,46 @@ FIFA_RANK: dict[str, int] = {
     "Curaçao": 77,
     "Haiti": 83,
     "New Zealand": 95,
+}
+
+CALIBRATED_RANK_LOG_SCALE = 0.55
+CALIBRATED_HOST_ADVANTAGE = 0.42
+CALIBRATED_BASE_GOALS = 2.80
+CALIBRATED_TOTAL_GOALS_SLOPE = 0.22
+CALIBRATED_MARKET_WEIGHT = 0.65
+
+HISTORICAL_MATCHES_URL = "https://raw.githubusercontent.com/jfjelstul/worldcup/master/data-csv/matches.csv"
+HISTORICAL_RANKINGS_URL = "https://raw.githubusercontent.com/tadhgfitzgerald/fifa_ranking/master/fifa_ranking.csv"
+BACKTEST_TOURNAMENTS = ("WC-1994", "WC-1998", "WC-2002", "WC-2006", "WC-2010", "WC-2014", "WC-2018")
+BACKTEST_HOSTS = {
+    "WC-1994": {"USA"},
+    "WC-1998": {"FRA"},
+    "WC-2002": {"JPN", "KOR"},
+    "WC-2006": {"GER"},
+    "WC-2010": {"RSA"},
+    "WC-2014": {"BRA"},
+    "WC-2018": {"RUS"},
+}
+HISTORICAL_CODE_ALIASES = {
+    "AGO": "ANG",
+    "BGR": "BUL",
+    "CHE": "SUI",
+    "CHL": "CHI",
+    "CRI": "CRC",
+    "DEU": "GER",
+    "DNK": "DEN",
+    "DZA": "ALG",
+    "GRC": "GRE",
+    "HND": "HON",
+    "HRV": "CRO",
+    "NLD": "NED",
+    "PRT": "POR",
+    "PRY": "PAR",
+    "SAU": "KSA",
+    "TGO": "TOG",
+    "TTO": "TRI",
+    "URY": "URU",
+    "ZAF": "RSA",
 }
 
 
@@ -346,10 +387,10 @@ def fit_strengths(iterations: int = 900) -> dict[str, float]:
     implied = {team: american_to_probability(odds) for team, odds in OUTRIGHT_ODDS.items()}
     mean_log = sum(math.log(p) for p in implied.values()) / len(implied)
     for team, probability in implied.items():
-        prior_edges.append((team, 1.05 * (math.log(probability) - mean_log), 0.34))
+        prior_edges.append((team, 1.00 * (math.log(probability) - mean_log), 0.34))
     mean_rank_score = sum(-math.log(FIFA_RANK[team]) for team in teams) / len(teams)
     for team in teams:
-        prior_edges.append((team, 0.55 * (-math.log(FIFA_RANK[team]) - mean_rank_score), 0.20))
+        prior_edges.append((team, CALIBRATED_RANK_LOG_SCALE * (-math.log(FIFA_RANK[team]) - mean_rank_score), 0.24))
 
     match_edges: list[tuple[str, str, float, float]] = []
     result_edges: list[tuple[str, str, float, float]] = []
@@ -385,11 +426,11 @@ def fit_strengths(iterations: int = 900) -> dict[str, float]:
 
 def expected_goals(team_a: str, team_b: str, ratings: dict[str, float]) -> tuple[float, float]:
     diff = max(-3.0, min(3.0, ratings[team_a] - ratings[team_b]))
-    total = 2.55 + 0.10 * min(abs(diff), 2.0)
     if team_a in HOSTS and team_b not in HOSTS:
-        diff += 0.10
+        diff += CALIBRATED_HOST_ADVANTAGE
     elif team_b in HOSTS and team_a not in HOSTS:
-        diff -= 0.10
+        diff -= CALIBRATED_HOST_ADVANTAGE
+    total = CALIBRATED_BASE_GOALS + CALIBRATED_TOTAL_GOALS_SLOPE * min(abs(diff), 2.5)
     goals_a = max(0.18, total / 2.0 + diff / 2.0)
     goals_b = max(0.18, total / 2.0 - diff / 2.0)
     return goals_a, goals_b
@@ -439,7 +480,7 @@ def blended_outcome_probabilities(team_a: str, team_b: str, ratings: dict[str, f
     market = devig_three_way(fixture.odds_a, fixture.draw_odds, fixture.odds_b)
     if fixture.team_a != team_a:
         market = (market[2], market[1], market[0])
-    return tuple(0.65 * market[i] + 0.35 * model[i] for i in range(3))  # type: ignore[return-value]
+    return tuple(CALIBRATED_MARKET_WEIGHT * market[i] + (1.0 - CALIBRATED_MARKET_WEIGHT) * model[i] for i in range(3))  # type: ignore[return-value]
 
 
 def predicted_score(team_a: str, team_b: str, ratings: dict[str, float], knockout: bool = False) -> tuple[int, int, str]:
@@ -679,6 +720,192 @@ def write_csv(path: Path, projections: Iterable[Projection]) -> None:
             )
 
 
+def load_csv_url(url: str) -> list[dict[str, str]]:
+    with urllib.request.urlopen(url, timeout=30) as response:
+        lines = (line.decode("utf-8") for line in response)
+        return list(csv.DictReader(lines))
+
+
+def historical_code(code: str) -> str:
+    return HISTORICAL_CODE_ALIASES.get(code, code)
+
+
+def historical_rankings_by_tournament(rank_rows: list[dict[str, str]], match_rows: list[dict[str, str]]) -> dict[str, dict[str, int]]:
+    starts = {
+        tournament: min(row["match_date"] for row in match_rows if row["tournament_id"] == tournament)
+        for tournament in BACKTEST_TOURNAMENTS
+    }
+    team_codes = {
+        tournament: sorted(
+            {historical_code(row["home_team_code"]) for row in match_rows if row["tournament_id"] == tournament}
+            | {historical_code(row["away_team_code"]) for row in match_rows if row["tournament_id"] == tournament}
+        )
+        for tournament in BACKTEST_TOURNAMENTS
+    }
+    rankings: dict[str, dict[str, int]] = {}
+    for tournament in BACKTEST_TOURNAMENTS:
+        latest: dict[str, dict[str, str]] = {}
+        for row in rank_rows:
+            if row["rank_date"] <= starts[tournament]:
+                latest[row["country_abrv"]] = row
+        missing = [code for code in team_codes[tournament] if code not in latest]
+        if missing:
+            raise RuntimeError(f"missing FIFA rankings for {tournament}: {', '.join(missing)}")
+        rankings[tournament] = {code: int(latest[code]["rank"]) for code in team_codes[tournament]}
+    return rankings
+
+
+def historical_rating(rank: int) -> float:
+    return -CALIBRATED_RANK_LOG_SCALE * math.log(rank)
+
+
+def historical_probabilities(home_code: str, away_code: str, tournament: str, ranks: dict[str, int]) -> tuple[float, float, float]:
+    home = historical_code(home_code)
+    away = historical_code(away_code)
+    diff = historical_rating(ranks[home]) - historical_rating(ranks[away])
+    hosts = BACKTEST_HOSTS[tournament]
+    if home in hosts and away not in hosts:
+        diff += CALIBRATED_HOST_ADVANTAGE
+    elif away in hosts and home not in hosts:
+        diff -= CALIBRATED_HOST_ADVANTAGE
+    total = CALIBRATED_BASE_GOALS + CALIBRATED_TOTAL_GOALS_SLOPE * min(abs(diff), 2.5)
+    mu_home = max(0.18, total / 2.0 + diff / 2.0)
+    mu_away = max(0.18, total / 2.0 - diff / 2.0)
+    home_pmf = poisson_pmf(mu_home)
+    away_pmf = poisson_pmf(mu_away)
+    win = draw = loss = 0.0
+    for home_goals, home_prob in enumerate(home_pmf):
+        for away_goals, away_prob in enumerate(away_pmf):
+            probability = home_prob * away_prob
+            if home_goals > away_goals:
+                win += probability
+            elif home_goals == away_goals:
+                draw += probability
+            else:
+                loss += probability
+    total_probability = win + draw + loss
+    return win / total_probability, draw / total_probability, loss / total_probability
+
+def historical_advance_pick(home_code: str, away_code: str, tournament: str, ranks: dict[str, int]) -> str:
+    home = historical_code(home_code)
+    away = historical_code(away_code)
+    win, draw, _ = historical_probabilities(home_code, away_code, tournament, ranks)
+    shootout = 1.0 / (1.0 + math.exp(-(historical_rating(ranks[home]) - historical_rating(ranks[away]))))
+    return home if win + draw * shootout >= 0.5 else away
+
+
+
+def run_historical_backtest() -> dict[str, object]:
+    match_rows = [
+        row
+        for row in load_csv_url(HISTORICAL_MATCHES_URL)
+        if row["tournament_id"] in BACKTEST_TOURNAMENTS
+    ]
+    rank_rows = load_csv_url(HISTORICAL_RANKINGS_URL)
+    rankings = historical_rankings_by_tournament(rank_rows, match_rows)
+    by_tournament: dict[str, dict[str, float | int | str]] = {}
+    totals = {"matches": 0, "correct": 0, "log_loss": 0.0, "brier": 0.0, "group_matches": 0, "group_correct": 0}
+    top_ranked_champion_hits = 0
+    final_match_champion_hits = 0
+
+    for tournament in BACKTEST_TOURNAMENTS:
+        rows = [row for row in match_rows if row["tournament_id"] == tournament]
+        ranks = rankings[tournament]
+        tournament_totals = {"matches": 0, "correct": 0, "log_loss": 0.0, "brier": 0.0, "group_matches": 0, "group_correct": 0}
+        entrant_codes = {
+            historical_code(row["home_team_code"]) for row in rows
+        } | {
+            historical_code(row["away_team_code"]) for row in rows
+        }
+        top_ranked_champion_code = min(entrant_codes, key=lambda code: ranks[code])
+        final = max(rows, key=lambda row: row["match_date"])
+        actual_champion_code = historical_code(final["home_team_code"] if final["home_team_win"] == "1" else final["away_team_code"])
+        final_match_pick_code = historical_advance_pick(final["home_team_code"], final["away_team_code"], tournament, ranks)
+        top_ranked_champion_hits += top_ranked_champion_code == actual_champion_code
+        final_match_champion_hits += final_match_pick_code == actual_champion_code
+
+        for row in rows:
+            probabilities = historical_probabilities(row["home_team_code"], row["away_team_code"], tournament, ranks)
+            if int(row["home_team_score"]) > int(row["away_team_score"]):
+                actual = 0
+            elif int(row["home_team_score"]) == int(row["away_team_score"]):
+                actual = 1
+            else:
+                actual = 2
+            predicted = max(range(3), key=lambda index: probabilities[index])
+            log_loss = -math.log(max(1e-9, probabilities[actual]))
+            brier = sum((probabilities[index] - (1.0 if index == actual else 0.0)) ** 2 for index in range(3))
+            tournament_totals["matches"] += 1
+            tournament_totals["correct"] += int(predicted == actual)
+            tournament_totals["log_loss"] += log_loss
+            tournament_totals["brier"] += brier
+            if row["group_stage"] == "1":
+                tournament_totals["group_matches"] += 1
+                tournament_totals["group_correct"] += int(predicted == actual)
+
+        for key in totals:
+            totals[key] += tournament_totals[key]
+        by_tournament[tournament] = {
+            "matches": tournament_totals["matches"],
+            "accuracy": tournament_totals["correct"] / tournament_totals["matches"],
+            "group_stage_accuracy": tournament_totals["group_correct"] / tournament_totals["group_matches"],
+            "log_loss": tournament_totals["log_loss"] / tournament_totals["matches"],
+            "brier": tournament_totals["brier"] / tournament_totals["matches"],
+            "top_ranked_champion_code": top_ranked_champion_code,
+            "final_match_pick_code": final_match_pick_code,
+            "actual_champion_code": actual_champion_code,
+            "top_ranked_champion_hit": int(top_ranked_champion_code == actual_champion_code),
+            "final_match_champion_hit": int(final_match_pick_code == actual_champion_code),
+        }
+
+    return {
+        "source_matches": HISTORICAL_MATCHES_URL,
+        "source_rankings": HISTORICAL_RANKINGS_URL,
+        "tournaments": list(BACKTEST_TOURNAMENTS),
+        "calibration": calibration_summary(),
+        "overall": {
+            "matches": totals["matches"],
+            "accuracy": totals["correct"] / totals["matches"],
+            "group_stage_accuracy": totals["group_correct"] / totals["group_matches"],
+            "log_loss": totals["log_loss"] / totals["matches"],
+            "brier": totals["brier"] / totals["matches"],
+            "top_ranked_champion_hit_rate": top_ranked_champion_hits / len(BACKTEST_TOURNAMENTS),
+            "final_match_champion_hit_rate": final_match_champion_hits / len(BACKTEST_TOURNAMENTS),
+        },
+        "by_tournament": by_tournament,
+    }
+
+
+def print_backtest_report(backtest: dict[str, object]) -> None:
+    overall = backtest["overall"]  # type: ignore[index]
+    print("\nHistorical backtest, 1994-2018:")
+    print(
+        "  "
+        f"{overall['matches']} matches, accuracy {overall['accuracy']:.2%}, "
+        f"group accuracy {overall['group_stage_accuracy']:.2%}, "
+        f"log loss {overall['log_loss']:.3f}, Brier {overall['brier']:.3f}, "
+        f"top-ranked champion hit {overall['top_ranked_champion_hit_rate']:.2%}, "
+        f"actual-final pick hit {overall['final_match_champion_hit_rate']:.2%}"
+    )
+    for tournament, metrics in backtest["by_tournament"].items():  # type: ignore[union-attr]
+        print(
+            "  "
+            f"{tournament}: accuracy {metrics['accuracy']:.2%}, "
+            f"log loss {metrics['log_loss']:.3f}, "
+            f"champion prior {metrics['top_ranked_champion_code']} / final pick {metrics['final_match_pick_code']} -> {metrics['actual_champion_code']}"
+        )
+
+
+def calibration_summary() -> dict[str, float]:
+    return {
+        "rank_log_scale": CALIBRATED_RANK_LOG_SCALE,
+        "host_advantage_goals": CALIBRATED_HOST_ADVANTAGE,
+        "base_goals": CALIBRATED_BASE_GOALS,
+        "total_goals_slope": CALIBRATED_TOTAL_GOALS_SLOPE,
+        "market_weight_for_unplayed_2026_group_matches": CALIBRATED_MARKET_WEIGHT,
+    }
+
+
 def print_report(projections: list[Projection], tables: dict[str, list[dict[str, int | str]]], title_probs: dict[str, float]) -> None:
     final = projections[-1]
     print(f"Projected champion: {final.winner}")
@@ -703,6 +930,7 @@ def build_summary(ratings: dict[str, float], projections: list[Projection], titl
         "final": {"team_a": final.team_a, "team_b": final.team_b, "score": final.score, "winner": final.winner},
         "top_title_probabilities": dict(list(title_probs.items())[:12]),
         "ratings": dict(sorted(ratings.items(), key=lambda item: item[1], reverse=True)),
+        "calibration": calibration_summary(),
     }
 
 
@@ -711,7 +939,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runs", type=int, default=20000, help="Monte Carlo simulations for title probabilities.")
     parser.add_argument("--seed", type=int, default=20260618, help="Random seed for Monte Carlo reproducibility.")
     parser.add_argument("--write-csv", type=Path, help="Write the 104-match projected path to CSV.")
-    parser.add_argument("--write-json", type=Path, help="Write champion summary, probabilities, and ratings to JSON.")
+    parser.add_argument("--write-json", type=Path, help="Write champion summary, probabilities, ratings, and calibration to JSON.")
+    parser.add_argument("--backtest", action="store_true", help="Run the 1994-2018 historical World Cup backtest.")
+    parser.add_argument("--write-backtest", type=Path, help="Write historical backtest findings to JSON.")
     return parser.parse_args()
 
 
@@ -725,6 +955,11 @@ def main() -> int:
         write_csv(args.write_csv, projections)
     if args.write_json:
         args.write_json.write_text(json.dumps(build_summary(ratings, projections, title_probs), indent=2) + "\n", encoding="utf-8")
+    if args.backtest or args.write_backtest:
+        backtest = run_historical_backtest()
+        print_backtest_report(backtest)
+        if args.write_backtest:
+            args.write_backtest.write_text(json.dumps(backtest, indent=2) + "\n", encoding="utf-8")
     return 0
 
 

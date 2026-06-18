@@ -43,6 +43,20 @@ class PredictorTests(unittest.TestCase):
         self.assertEqual(len(lines), 105)
         self.assertTrue(lines[0].startswith("match_no,stage,group"))
 
+    def test_historical_code_aliases_and_probabilities(self):
+        self.assertEqual(wcwin.historical_code("DEU"), "GER")
+        ranks = {"GER": 1, "CRC": 50}
+        probs = wcwin.historical_probabilities("DEU", "CRI", "WC-2006", ranks)
+        self.assertAlmostEqual(sum(probs), 1.0)
+        self.assertGreater(probs[0], probs[2])
+
+    def test_summary_includes_calibration(self):
+        ratings = wcwin.fit_strengths(iterations=20)
+        projections, _ = wcwin.full_path(ratings)
+        summary = wcwin.build_summary(ratings, projections, {"France": 0.2})
+        self.assertIn("calibration", summary)
+        self.assertEqual(summary["calibration"]["rank_log_scale"], wcwin.CALIBRATED_RANK_LOG_SCALE)
+
 
 if __name__ == "__main__":
     unittest.main()
